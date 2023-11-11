@@ -1,5 +1,6 @@
 package cipher
 
+
 import(
 		"crypto/aes"
 		"crypto/cipher"
@@ -10,11 +11,16 @@ crand 	"crypto/rand"
 		"io"
 )
 
-var privateAESKey []byte = GenerateAESKey() // local private key
+
+var( 
+	privateAESKey []byte = GenerateAESKey() // local private key
+)
 
 
 // Decrypt ciphertext with local private key
+//
 // Input: ciphertext
+//
 // Output: plaintext, error (nil if no error)
 func LocalAESDecrypt(ciphertext []byte) ([]byte, error) {
 
@@ -42,7 +48,9 @@ func LocalAESDecrypt(ciphertext []byte) ([]byte, error) {
 
 
 // Decrypt ciphertext with input key
+//
 // Input: key, ciphertext
+//
 // Output: plaintext, error (nil if no error)
 func AESDecrypt(key []byte, ciphertext []byte) ([]byte, error) {
 
@@ -70,7 +78,9 @@ func AESDecrypt(key []byte, ciphertext []byte) ([]byte, error) {
 }
 
 // Encrypt plaintext with local private key
+//
 // Input: plaintext
+//
 // Output: ciphertext, error (nil if no error)
 func LocalAESEncrypt(plaintext []byte) ([]byte, error) {
 
@@ -99,7 +109,9 @@ func LocalAESEncrypt(plaintext []byte) ([]byte, error) {
 }
 
 // Encrypt plaintext with input key
+//
 // Input: key, plaintext
+//
 // Output: ciphertext, error (nil if no error)
 func AESEncrypt(key []byte, plaintext []byte) ([]byte, error) {
 
@@ -129,7 +141,9 @@ func AESEncrypt(key []byte, plaintext []byte) ([]byte, error) {
 
 
 // Return new random private key
+//
 // Input:
+//
 // Output: private key
 func GenerateAESKey() []byte {
 	rand.Seed(time.Now().UnixNano())
@@ -140,4 +154,5 @@ func GenerateAESKey() []byte {
     }
     return b
 }
+
 
