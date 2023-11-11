@@ -8,6 +8,7 @@ import (
         "encoding/json"
 
         "Copy-Teleport/devices"
+        "Copy-Teleport/cipher"
 
 )
 
@@ -65,46 +66,6 @@ func processClient(connection net.Conn) {
         // connection.Close()
 }
 
-func checkPassword(connection net.Conn, res ResponseClient) bool {
-        //return true // da togliere
-        if res.Password != Password {
-
-                fmt.Println("[Error] invalid password")
-                out := ResponseClient{}
-
-                out.Type_request = "invalid password"
-                out.Username = Username
-                
-
-                ris, err := json.Marshal(&out)
-                if err != nil{
-                        fmt.Println("[Errore] json decoder: " + err.Error())
-                }
-                connection.Write([]byte(ris))
-        }
-
-        return res.Password == Password
-}
-
-func checkToken(connection net.Conn, res ResponseClient) bool {
-        if res.Token != token {
-
-                fmt.Println("[Error] invalid token")
-                out := ResponseClient{}
-
-                out.Type_request = "invalid token"
-                out.Username = Username
-                
-
-                ris, err := json.Marshal(&out)
-                if err != nil{
-                        fmt.Println("[Errore] json decoder: " + err.Error())
-                }
-                connection.Write([]byte(ris))
-        }
-
-        return res.Token == token
-}
 
 func SendUpdateDevices() (bool, error) {
         out := true
@@ -139,9 +100,12 @@ func SendUpdateDevices() (bool, error) {
 
                 data := new(ResponseClient)
                 data.Type_request = "update devices"
-                data.Username = Username
-                data.Token = token
-                data.Data = string(dev)
+                cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
+                data.Username = string(cipUsername)
+                cipToken, err := cipher.LocalAESEncrypt([]byte(token))
+                data.Token = string(cipToken)
+                cipDev, err := cipher.LocalAESEncrypt(dev)
+                data.Data = string(cipDev)
 
                 ris, err := json.Marshal(&data)
 
@@ -152,7 +116,7 @@ func SendUpdateDevices() (bool, error) {
 
                 
 
-                out, e = SendData(val.Ip_address, string(ris), false)
+                out, e = SendData(val.Ip_address, ris, false)
         }
 
     return out, e

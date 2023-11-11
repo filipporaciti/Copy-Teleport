@@ -1,15 +1,14 @@
 module Copy-Teleport
 
-go 1.21.1
+go 1.21.3
 
 require (
-	fyne.io/fyne v1.4.3
-	fyne.io/fyne/v2 v2.4.0
+	fyne.io/fyne/v2 v2.4.1
+	github.com/atotto/clipboard v0.1.4
 )
 
 require (
 	fyne.io/systray v1.10.1-0.20230722100817-88df1e0ffa9a // indirect
-	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fredbi/uri v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

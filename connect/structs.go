@@ -2,7 +2,6 @@ package connect
 
 
 var Values = make([]AvailableDevice, 0)
-var token string = ""
 
 type AvailableDevice struct {
 	Username string
@@ -32,4 +31,5 @@ type ResponseClient struct{
         Errore string           `json:"errore"`
 
         Data string             `json:"data"`
+        Key string              `json:"key"`
 }

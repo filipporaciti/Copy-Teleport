@@ -8,13 +8,16 @@ import (
     "encoding/json"
 
     "Copy-Teleport/devices"
+    "Copy-Teleport/cipher"
 )
 
 func SendConnectionRequest(ip_address string, password string) (bool, error) {
     data := new(ResponseClient)
     data.Type_request = "connection request"
-    data.Username = Username
-    data.Password = password
+    cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
+    data.Username = string(cipUsername)
+    cipPassword, err := cipher.LocalAESEncrypt([]byte(password))
+    data.Password = string(cipPassword)
 
     ris, err := json.Marshal(&data)
 
@@ -23,15 +26,18 @@ func SendConnectionRequest(ip_address string, password string) (bool, error) {
         return false, err
     }
 
-    return SendData(ip_address, string(ris), true)
+    return SendData(ip_address, ris, true)
 }
 
 func SendAddCopyRequest(text string) (bool, error) {
     data := new(ResponseClient)
     data.Type_request = "add copy"
-    data.Username = Username
-    data.Token = token
-    data.Data = text
+    cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
+    data.Username = string(cipUsername)
+    cipToken, err := cipher.LocalAESEncrypt([]byte(token))
+    data.Token = string(cipToken)
+    cipText, err := cipher.LocalAESEncrypt([]byte(text))
+    data.Data = string(cipText)
 
     ris, err := json.Marshal(&data)
 
@@ -41,14 +47,12 @@ func SendAddCopyRequest(text string) (bool, error) {
     }
 
     out := true
-    e := error(nil)
-    
-    // out, e = SendData("192.168.1.57", string(ris), false) // da togliere
+    err = error(nil)
 
     for _, val := range devices.Values {
-        out, e = SendData(val.Ip_address, string(ris), false)
+        out, err = SendData(val.Ip_address, ris, false)
     }
-    return out, e
+    return out, err
 }
 
 func SendOneBeaconRequest(ip_address string) (bool, error) {
@@ -62,10 +66,10 @@ func SendOneBeaconRequest(ip_address string) (bool, error) {
 		fmt.Println("[Errore] codifica json on SendOneBeaconRequest: " + err.Error())
         return false, err
 	}
-	return SendData(ip_address, string(ris), true)
+	return SendData(ip_address, ris, true)
 }
 
-func SendData(ip_address string, data string, response bool) (bool, error) {
+func SendData(ip_address string, data []byte, response bool) (bool, error) {
 	
 	fmt.Println("Connecting to " + SERVER_TYPE + " server " + ip_address + ":" + SERVER_PORT)
 
@@ -76,8 +80,8 @@ func SendData(ip_address string, data string, response bool) (bool, error) {
     }
     defer conn.Close() // send data and stop connection
 
-    fmt.Println("------" + data)
-    _, err = conn.Write([]byte(data)) // prima cera uno \n
+    fmt.Println("------" + string(data))
+    _, err = conn.Write(data) 
     if err != nil {
         fmt.Println("[Error send data]" + err.Error())
         return false, err
@@ -90,6 +94,7 @@ func SendData(ip_address string, data string, response bool) (bool, error) {
                 fmt.Println("[Error reading after send] ", err.Error())
                 return false, err
         }
+
         out := strings.Trim(string(buffer[:mLen]), "\n")
 
         fmt.Println("Received after send: ", out)

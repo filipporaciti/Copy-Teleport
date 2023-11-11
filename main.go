@@ -1,9 +1,6 @@
 package main
 
 import (
-
-	// "fmt"
-
 	"Copy-Teleport/connect"
 	"Copy-Teleport/graphic"
 )
@@ -12,10 +9,12 @@ import (
 
 func main() {
 
+
 	connect.ServerStart()
 
 	graphic.GetGUI()
 
+	
 	
 
 }
