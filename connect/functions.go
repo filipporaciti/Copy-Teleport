@@ -8,6 +8,8 @@ import (
 	"net"
 	"encoding/json"
 	"strings"
+	"errors"
+
 
 	"github.com/atotto/clipboard"
 
@@ -55,7 +57,7 @@ func StartCopyClipboardDaemon() {
 			next = CopyClipboard()
 			// fmt.Println(copy, next)
 			if next != copy {
-				if data, _ := SendAddCopyRequest(next); data{
+				if err:= SendAddCopyRequest(next); err == nil {
 					history.Add("me", next)
 					copy = next
 				}
@@ -72,7 +74,7 @@ func StartCopyClipboardDaemon() {
 // Output: 
 func PasteClipboard(text string) {
 	if err := clipboard.WriteAll(text); err != nil {
-        fmt.Println("[Errore] while copy to clipboard")
+        	fmt.Println("\033[31m[Error] while copy to clipboard:", err.Error(), "\033[0m")
    	}
    	copy = text
 }
@@ -82,7 +84,7 @@ func PasteClipboard(text string) {
 func CopyClipboard() string {
 	text, err := clipboard.ReadAll()
 	if err != nil {
-		fmt.Println("[Errore] copy from clipboard")
+		fmt.Println("\033[31m[Error] copy from clipboard:", err.Error(), "\033[0m")
 	}
 	return text
 }
@@ -94,13 +96,13 @@ func SetRandomUsername() {
 
 	num, err := rand.Int(rand.Reader, big.NewInt(int64(len(maleNames))))
 	if err != nil {
-		fmt.Println("[x] Error while getting random username 1")
+		fmt.Println("\033[31m[Error] while getting random username 1:", err.Error(), "\033[0m")
 	}
 	usr += maleNames[num.Int64()] + " "
 
 	num, err = rand.Int(rand.Reader, big.NewInt(int64(len(maleNames))))
 	if err != nil {
-		fmt.Println("[x] Error while getting random username 2")
+		fmt.Println("\033[31m[Error] while getting random username 2:", err.Error(), "\033[0m")
 	}
 	usr += femaleNames[num.Int64()]
 
@@ -115,7 +117,7 @@ func SetRandomPassword(n int) {
 	for i:=0; i<n; i++ {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
 		if err != nil {
-			fmt.Println("[x] Error while getting random password")
+			fmt.Println("\033[31m[Error] while getting random password:", err.Error(), "\033[0m")
 		}
 		ret[i] = letters[num.Int64()]
 	}
@@ -131,7 +133,7 @@ func SetRandomToken(){
 	for i := 0; i < 30; i++ {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
 		if err != nil {
-			fmt.Println("[x] Error while getting random token")
+			fmt.Println("\033[31m[Error] while getting random token:", err.Error(), "\033[0m")
 		}
 		ret[i] = letters[num.Int64()]
 	}
@@ -142,7 +144,7 @@ func SetRandomToken(){
 func GetIPAddress() string {
     conn, err := net.Dial("udp", "8.8.8.8:80")
     if err != nil {
-        fmt.Println("[Errore] while getting ip address")
+        fmt.Println("\033[31m[Error] while getting ip address:", err.Error(), "\033[0m")
     }
     defer conn.Close()
 
@@ -154,7 +156,7 @@ func GetIPAddress() string {
 func checkToken(connection net.Conn, tryToken string) bool {
         if tryToken != token {
 
-                fmt.Println("[Error] invalid token")
+                fmt.Println("\033[31m[Error] invalid token:", err.Error(), "\033[0m")
                 out := ResponseClient{}
 
                 out.Type_request = "invalid token"
@@ -163,7 +165,7 @@ func checkToken(connection net.Conn, tryToken string) bool {
 
                 ris, err := json.Marshal(&out)
                 if err != nil{
-                        fmt.Println("[Errore] json decoder: " + err.Error())
+                        fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
                 }
                 connection.Write([]byte(ris))
         }
@@ -173,21 +175,21 @@ func checkToken(connection net.Conn, tryToken string) bool {
 
 func checkPassword(connection net.Conn, tryPassword string) bool {
         //return true // da togliere
-        if tryPassword != Password {
+        // if tryPassword != Password {
 
-                fmt.Println("[Error] invalid password")
-                out := ResponseClient{}
+        //         fmt.Println("[Error] invalid password")
+        //         out := ResponseClient{}
 
-                out.Type_request = "invalid password"
-                out.Username = Username
+        //         out.Type_request = "invalid password"
+        //         out.Username = Username
                 
 
-                ris, err := json.Marshal(&out)
-                if err != nil{
-                        fmt.Println("[Errore] json decoder: " + err.Error())
-                }
-                connection.Write([]byte(ris))
-        }
+        //         ris, err := json.Marshal(&out)
+        //         if err != nil{
+        //                 fmt.Println("[Error] json decoder: " + err.Error())
+        //         }
+        //         connection.Write([]byte(ris))
+        // }
 
         return tryPassword == Password
 }
@@ -203,154 +205,99 @@ func processResponse(connection net.Conn, res ResponseClient) error {
 
                 ris, err := json.Marshal(&out)
                 if err != nil{
-                        fmt.Println("[Errore] json decoder: " + err.Error())
+                        fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
                         return err
                 }
                 connection.Write([]byte(ris))
                 return nil
         case "beacon response":
 
-        	plainUsername, err := cipher.LocalAESDecrypt([]byte(res.Username))
-        	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
-                        return err
-                }
+        	// plainUsername, err := cipher.LocalAESDecrypt([]byte(res.Username))
+        	// if err != nil{
+                //         fmt.Println("[Errore] local AES decrypt: " + err.Error())
+                //         return err
+                // }
 
         	// split to remove "port" part in ip address
-                Add(string(plainUsername), strings.Split(connection.RemoteAddr().String(), ":")[0])
+                Add(res.Username, strings.Split(connection.RemoteAddr().String(), ":")[0])
                 return nil
-
-        case "connection request":
-                if checkPassword(connection, res.Password) {
-                        out := ResponseClient{}
-                        out.Type_request = "connection response"
-                        out.Username = Username
-                        out.Token = token
-
-                        ris, err := json.Marshal(&out)
-                        if err != nil{
-                                fmt.Println("[Errore] json decoder: " + err.Error())
-                                return err
-                        }
-
-        		plainUsername, err := cipher.LocalAESDecrypt([]byte(res.Username))
-        		if err != nil{
-                        	fmt.Println("[Errore] local AES decrypt: " + err.Error())
-                        	return err
-                	}
-        		plainPassword, err := cipher.LocalAESDecrypt([]byte(res.Password))
-        		if err != nil{
-	                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
-	                        return err
-	                }
-
-
-        		// split to remove "port" part in ip address
-                        devices.Add(string(plainUsername), string(plainPassword), strings.Split(connection.RemoteAddr().String(), ":")[0])
-                        fmt.Println(devices.Values)
-                        connection.Write([]byte(ris))
-                        SendUpdateDevices()
-                }
-                return nil
-        case "connection response":
+        case "token update":
                 
-        	plainToken, err := cipher.LocalAESDecrypt([]byte(res.Token))
-        	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
-                        return err
+
+                b64CipToken, err := cipher.Base64ToByte(res.Token)
+                if err != nil {
+                	return err
+                }
+                
+                plainToken, err := cipher.LocalAESDecrypt(b64CipToken)
+                if err != nil {
+                	return err
                 }
 
                 token = string(plainToken)
 
-                return nil
+                return err
 
         case "add copy":
 
         	plainToken, err := cipher.LocalAESDecrypt([]byte(res.Token))
         	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
-                        return err
-                }
-
-        	plainUsername, err := cipher.LocalAESDecrypt([]byte(res.Username))
-        	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
+                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
                         return err
                 }
 
         	plainData, err := cipher.LocalAESDecrypt([]byte(res.Data))
         	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
+                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
                         return err
                 }
 
                 if checkToken(connection, string(plainToken)) {
-                        history.Add(string(plainUsername), string(plainData))
+                        history.Add(res.Username, string(plainData))
                         PasteClipboard(string(plainData))
                 }
                 return nil
 
         case "update devices":
 
-        	plainToken, err := cipher.LocalAESDecrypt([]byte(res.Token))
+        	byteEncToken, _ := cipher.Base64ToByte(res.Token)
+        	plainToken, err := cipher.LocalAESDecrypt(byteEncToken)
         	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
+                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
                         return err
                 }
 
-        	plainData, err := cipher.LocalAESDecrypt([]byte(res.Data))
+                byteEncData, _ := cipher.Base64ToByte(res.Data)
+        	plainData, err := cipher.LocalAESDecrypt(byteEncData)
         	if err != nil{
-                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
+                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
                         return err
                 }
+                
 
                 if checkToken(connection, string(plainToken)) {
                         jsonOut := make([]devices.DevicesElement, 0)
-                        json.Unmarshal([]byte(string(plainData)), &jsonOut)
+                        json.Unmarshal(plainData, &jsonOut)
                         devices.Values = jsonOut
                 }
                 return nil
         case "get public key":
-        	cipher.ResponseAESKeyExchange(connection, func(conn net.Conn, pass string) bool {
-        		if checkPassword(conn, pass) {
-        			out := ResponseClient{}
-	                        out.Type_request = "connection response"
-	                        out.Username = Username
-	                        out.Token = token
 
-	                        ris, err := json.Marshal(&out)
-	                        if err != nil{
-	                                fmt.Println("[Errore] json decoder: " + err.Error())
-	                                return false
-	                        }
+        	passFunc := func(conn net.Conn, pass string) bool {
+	        	return pass == Password
+        	}
 
-	        		plainUsername, err := cipher.LocalAESDecrypt([]byte(res.Username))
-	        		if err != nil{
-		                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
-		                        return false
-		                }
-	        		plainPassword, err := cipher.LocalAESDecrypt([]byte(res.Password))
-	        		if err != nil{
-		                        fmt.Println("[Errore] local AES decrypt: " + err.Error())
-		                        return false
-		                }
+        	err := cipher.ResponseAESKeyExchange(connection, passFunc)
 
-	        		// split to remove "port" part in ip address
-	                        devices.Add(string(plainUsername), string(plainPassword), strings.Split(conn.RemoteAddr().String(), ":")[0])
-	                        fmt.Println(devices.Values)
-	                        conn.Write([]byte(ris))
-	                        SendUpdateDevices()
-	                        return true
-	        	} 
-	        	return false
-        	})
-        	return nil
-        case "errore":
-                // alert errore
-                
-                return nil
+        	if err != nil {
+        		return err
+        	}
+
+        	SendTokenUpdate(strings.Split(connection.RemoteAddr().String(), ":")[0], "Pippo", "plainPassword")
+
+        	return err
         default:
-                fmt.Println("[Info] No valid request")
-                return nil     
+                fmt.Println("\033[31m[Error] No valid request", "\033[0m")
+                return errors.New("No valid request")
         }
 }

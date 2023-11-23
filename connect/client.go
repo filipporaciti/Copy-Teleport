@@ -11,25 +11,16 @@ import (
     "Copy-Teleport/cipher"
 )
 
-func SendConnectionRequest(ip_address string, password string) (bool, error) {
-    data := new(ResponseClient)
-    data.Type_request = "connection request"
-    cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
-    data.Username = string(cipUsername)
-    cipPassword, err := cipher.LocalAESEncrypt([]byte(password))
-    data.Password = string(cipPassword)
+func SendConnectionRequest(ip_address string, password string) error {
 
-    ris, err := json.Marshal(&data)
+    // cipPassword, err := cipher.LocalAESEncrypt([]byte(password))
+    // data.Password = string(cipPassword)
 
-    if err != nil {
-        fmt.Println("[Errore] codifica json on SendConnectionRequest: " + err.Error())
-        return false, err
-    }
-
-    return SendData(ip_address, ris, true)
+    err := cipher.RequestAESKeyExchange(ip_address, password)
+    return err
 }
 
-func SendAddCopyRequest(text string) (bool, error) {
+func SendAddCopyRequest(text string) error {
     data := new(ResponseClient)
     data.Type_request = "add copy"
     cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
@@ -42,20 +33,19 @@ func SendAddCopyRequest(text string) (bool, error) {
     ris, err := json.Marshal(&data)
 
     if err != nil {
-        fmt.Println("[Errore] codifica json on SendAddCopyRequest: " + err.Error())
-        return false, err
+        fmt.Println("\033[31m[Errore] codifica json on SendAddCopyRequest: " + err.Error(), "\033[0m")
+        return err
     }
 
-    out := true
-    err = error(nil)
+    err = nil
 
     for _, val := range devices.Values {
-        out, err = SendData(val.Ip_address, ris, false)
+        err = SendData(val.Ip_address, ris, false)
     }
-    return out, err
+    return err
 }
 
-func SendOneBeaconRequest(ip_address string) (bool, error) {
+func SendOneBeaconRequest(ip_address string) error {
 	data := new(ResponseClient)
 	data.Type_request = "beacon request"
 	data.Username = Username
@@ -63,36 +53,73 @@ func SendOneBeaconRequest(ip_address string) (bool, error) {
 	ris, err := json.Marshal(&data)
 
 	if err != nil {
-		fmt.Println("[Errore] codifica json on SendOneBeaconRequest: " + err.Error())
-        return false, err
+		fmt.Println("\033[31m[Errore] codifica json on SendOneBeaconRequest: " + err.Error(), "\033[0m")
+        return err
 	}
-	return SendData(ip_address, ris, true)
+    err = SendData(ip_address, ris, true)
+	return err
 }
 
-func SendData(ip_address string, data []byte, response bool) (bool, error) {
+func SendTokenUpdate(ip_address string, user string, pass string) error {
+
+
+    data := new(ResponseClient)
+    data.Type_request = "token update"
+    data.Username = Username
+ 
+    cipToken, err := cipher.LocalAESEncrypt([]byte(token))
+    if err != nil {
+        return err
+    }
+    b64CipToken := cipher.ByteToBase64(cipToken)
+    
+    data.Token = b64CipToken
+
+    ris, err := json.Marshal(&data)
+
+    if err != nil {
+        fmt.Println("\033[31m[Errore] codifica json on SendTokenUpdate: " + err.Error(), "\033[0m")
+        return err
+    }
+    err = SendData(ip_address, ris, false)
+
+                
+    // plainPassword, err := cipher.LocalAESEncrypt([]byte(res.Password))
+    // if err != nil{
+        //         fmt.Println("[Errore] local AES encrypt: " + err.Error())
+        //         return false
+        // }
+
+    devices.Add(user, pass, ip_address)
+    SendUpdateDevices()
+
+    return err
+}
+
+func SendData(ip_address string, data []byte, response bool) error {
 	
 	fmt.Println("Connecting to " + SERVER_TYPE + " server " + ip_address + ":" + SERVER_PORT)
 
     conn, err := net.DialTimeout(SERVER_TYPE, ip_address+":"+SERVER_PORT, time.Millisecond * 500)
     if err != nil {
-        fmt.Println("[Error creating connect send] ", err.Error())
-        return false, err
+        fmt.Println("\033[31m[Error creating connect send] ", err.Error(), "\033[0m")
+        return err
     }
     defer conn.Close() // send data and stop connection
 
-    fmt.Println("------" + string(data))
+    fmt.Println("Send: ", string(data))
     _, err = conn.Write(data) 
     if err != nil {
-        fmt.Println("[Error send data]" + err.Error())
-        return false, err
+        fmt.Println("\033[31m[Error send data]" + err.Error(), "\033[0m")
+        return err
     }
 
     if response {
         buffer := make([]byte, 4096)
         mLen, err := conn.Read(buffer)
         if err != nil {
-                fmt.Println("[Error reading after send] ", err.Error())
-                return false, err
+                fmt.Println("\033[31m[Error reading after send] ", err.Error(), "\033[0m")
+                return err
         }
 
         out := strings.Trim(string(buffer[:mLen]), "\n")
@@ -105,6 +132,6 @@ func SendData(ip_address string, data []byte, response bool) (bool, error) {
 
     }
 
-    return true, nil
+    return err
 
 }

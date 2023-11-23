@@ -56,7 +56,7 @@ func GetConnectContainer() *fyne.Container {
 
 			label.SetText(connect.Values[index].Username + ": " + connect.Values[index].Ip_address)
 			button.OnTapped = func() {
-				if data, _ := connect.SendConnectionRequest(connect.Values[index].Ip_address, input.Text); !data {
+				if err := connect.SendConnectionRequest(connect.Values[index].Ip_address, input.Text); err != nil {
 					SpawnPopUp("Connection falied")
 				}
 			}
@@ -66,7 +66,7 @@ func GetConnectContainer() *fyne.Container {
 
 		// qui aggiorno la device List
 		if data, err := connect.DiscoverDevices(); !data && !(strings.Contains(err.Error(), "i/o timeout") || strings.Contains(err.Error(), "host is down") || strings.Contains(err.Error(), "no route to host")) {
-			fmt.Println("----",err.Error())
+			fmt.Println("\033[31m[Error] refresh button:", err.Error(), "\033[0m")
 			SpawnPopUp("Discover error")
 		} else {
 			RefreshConnectItems()
@@ -91,8 +91,8 @@ func GetConnectContainer() *fyne.Container {
 		            errorLabel,
 		        ),
 	            widget.NewButton("Add", func() {
-	            	b, err := connect.SendOneBeaconRequest(entry.Text)
-	            	if !b {
+	            	err := connect.SendOneBeaconRequest(entry.Text)
+	            	if err != nil {
 	            		errorLabel.SetText("Errore: " + err.Error())
 	            		time.Sleep(time.Millisecond * 3000)
 	            	}

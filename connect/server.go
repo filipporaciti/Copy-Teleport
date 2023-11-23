@@ -23,7 +23,7 @@ func ServerStart(){
         	fmt.Println("Server Running...")
                 
                 if err != nil {
-                        fmt.Println("Error listening:", err.Error())
+                        fmt.Println("\033[31m[Error] listening:", err.Error(), "\033[0m")
                         os.Exit(1)
                 }
                 defer server.Close()
@@ -33,7 +33,7 @@ func ServerStart(){
                         connection, err := server.Accept()
 
                         if err != nil {
-                                fmt.Println("[Error] ", err.Error())
+                                fmt.Println("\033[31m[Error] server accept connection:", err.Error(), "\033[0m")
                                 continue
                         }
                         fmt.Println("client connected")
@@ -47,7 +47,7 @@ func processClient(connection net.Conn) {
         buffer := make([]byte, 4096)
         for {
                 mLen, err := connection.Read(buffer)
-                if err != nil {
+                if err != nil{
                         fmt.Println("Error reading:", err.Error())
                         return
                 }
@@ -60,6 +60,7 @@ func processClient(connection net.Conn) {
                         ris := ResponseClient{}
                         json.Unmarshal([]byte(out), &ris)
                         processResponse(connection, ris)
+                        
                 }
 
         }
@@ -67,9 +68,8 @@ func processClient(connection net.Conn) {
 }
 
 
-func SendUpdateDevices() (bool, error) {
-        out := true
-        e := error(nil)
+func SendUpdateDevices() error {
+        fmt.Println("[Info] send update devices")
         for _, val := range devices.Values {
 
                 v := devices.Values 
@@ -94,31 +94,35 @@ func SendUpdateDevices() (bool, error) {
                 dev, err := json.Marshal(&v)
 
                 if err != nil {
-                        fmt.Println("[Errore] codifica json on SendUpdateDevices (Values): " + err.Error())
-                        return false, err
+                        fmt.Println("\033[31m[Errore] codifica json on SendUpdateDevices (Values): " + err.Error(), "\033[0m")
+                        return err
                 }
 
                 data := new(ResponseClient)
                 data.Type_request = "update devices"
-                cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
-                data.Username = string(cipUsername)
+
+                data.Username = Username
+
                 cipToken, err := cipher.LocalAESEncrypt([]byte(token))
-                data.Token = string(cipToken)
+                b64CipToken := cipher.ByteToBase64(cipToken)
+                data.Token = b64CipToken
+
                 cipDev, err := cipher.LocalAESEncrypt(dev)
-                data.Data = string(cipDev)
+                b64CipDev := cipher.ByteToBase64(cipDev)
+                data.Data = b64CipDev
 
                 ris, err := json.Marshal(&data)
 
                 if err != nil {
-                        fmt.Println("[Errore] codifica json on SendUpdateDevices (output): " + err.Error())
-                        return false, err
+                        fmt.Println("\033[31m[Errore] codifica json on SendUpdateDevices (output): " + err.Error(), "\033[0m")
+                        return err
                 }
 
                 
 
-                out, e = SendData(val.Ip_address, ris, false)
+                err = SendData(val.Ip_address, ris, false)
         }
 
-    return out, e
+    return err
 }
 

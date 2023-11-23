@@ -8,6 +8,7 @@ import (
     "strings"
     "os/exec"
     "runtime"
+    "os"
 )
 
 func GetDevices(targetIP string) {
@@ -22,7 +23,7 @@ func GetDevices(targetIP string) {
 	        // fmt.Printf(ip)
 	        addr := net.ParseIP(ip)
 	        if addr == nil {
-	            fmt.Println("Invalid IP address:", ip)
+	            fmt.Println("\033[31m[Error] Invalid IP address:", ip, "\033[0m")
 	            continue
 	        }
 	        wg.Add(1)
@@ -42,7 +43,7 @@ func GetDevices(targetIP string) {
 		        // fmt.Printf(ip)
 		        addr := net.ParseIP(ip)
 		        if addr == nil {
-		            fmt.Println("Invalid IP address:", ip)
+		            fmt.Println("\033[31m[Error] Invalid IP address:", ip, "\033[0m")
 		            continue
 		        }
 		        wg.Add(1)
@@ -84,7 +85,8 @@ func pingIP(ip string) error {
 
     switch runtime.GOOS{
     case "windows": //Windows
-        cmd = exec.Command("cmd", "/C", command) // da controllare se funziona
+    	fmt.Println("\033[31m[Error] Project can't work on Windows", "\033[0m")
+        os.Exit(1)
     default://Mac & Linux
         cmd = exec.Command("bash", "-c", command)
     }
