@@ -24,14 +24,7 @@ var(
 //
 // Output: ciphertext, error (nil if no error)
 func LocalRSAEncrypt(plaintext []byte) ([]byte, error) {
-	
-	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, &privateRSAKey.PublicKey, plaintext, []byte(""))
-	if err != nil {
-		fmt.Println("[Error] local RSA encrypt")
-		return nil, err
-	}
-
-	return ciphertext, nil
+	return RSAEncrypt(&privateRSAKey.PublicKey, plaintext)
 }
 
 // Encrypt plaintext with input key
@@ -43,7 +36,7 @@ func RSAEncrypt(key *rsa.PublicKey, plaintext []byte) ([]byte, error) {
 	
 	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, key, plaintext, []byte(""))
 	if err != nil {
-		fmt.Println("[Error] local RSA encrypt")
+		fmt.Println("\033[31m[Error] RSA encrypt:", err.Error(), "\033[0m")
 		return nil, err
 	}
 
@@ -56,14 +49,7 @@ func RSAEncrypt(key *rsa.PublicKey, plaintext []byte) ([]byte, error) {
 //
 // Output: plaintext, error (nil if no error)
 func LocalRSADecrypt(ciphertext []byte) ([]byte, error) {
-
-	plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateRSAKey, ciphertext, []byte(""))
-	if err != nil {
-		fmt.Println("[Error] RSA decrypt")
-		return nil, err
-	}
-	return plaintext, nil
-
+	return RSADecrypt(privateRSAKey, ciphertext)
 }
 
 // Decrypt ciphertext with input key
@@ -75,7 +61,7 @@ func RSADecrypt(key *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 
 	plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, ciphertext, []byte(""))
 	if err != nil {
-		fmt.Println("[Error] RSA decrypt: " + err.Error())
+		fmt.Println("\033[31m[Error] RSA decrypt:", err.Error(), "\033[0m")
 		return nil, err
 	}
 	return plaintext, nil
@@ -90,7 +76,7 @@ func RSADecrypt(key *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 func generateRSAKey() *rsa.PrivateKey {
 	k, err := rsa.GenerateKey(rand.Reader,bits)
 	if err != nil {
-		fmt.Println("[Error] creating RSA keys")
+		fmt.Println("\033[31m[Error] creating RSA keys:", err.Error(), "\033[0m")
 		os.Exit(1)
 	}
 	return k

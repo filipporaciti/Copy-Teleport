@@ -24,25 +24,31 @@ var(
 // Output: plaintext, error (nil if no error)
 func LocalAESDecrypt(ciphertext []byte) ([]byte, error) {
 
+	ciphertext, err := Base64ToByte(string(ciphertext))
+
 	block, err := aes.NewCipher(privateAESKey)
 	if err != nil {
-		fmt.Println("[Error] AES decrypt creation cipher")
+		fmt.Println("\033[31m[Error] AES decrypt creation cipher:", err.Error(), "\033[0m")
 		return nil, err
 	}
 	
 	iv := ciphertext[:aes.BlockSize]
 	ciphertext = ciphertext[aes.BlockSize:]
 
+
 	cbc := cipher.NewCBCDecrypter(block, iv)
 	cbc.CryptBlocks(ciphertext, ciphertext)
 
+
 	plaintext, err := Unpad(ciphertext)
 	if err != nil {
-		fmt.Println("[Error] AES decrypt unpad")
+		fmt.Println("\033[31m[Error] AES decrypt unpad:", err.Error(), "\033[0m")
 		return nil, err
 	}
 
+
 	return plaintext, nil
+
 
 }
 
@@ -54,9 +60,11 @@ func LocalAESDecrypt(ciphertext []byte) ([]byte, error) {
 // Output: plaintext, error (nil if no error)
 func AESDecrypt(key []byte, ciphertext []byte) ([]byte, error) {
 
+	ciphertext, err := Base64ToByte(string(ciphertext))
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		fmt.Println("[Error] AES decrypt creation cipher")
+		fmt.Println("\033[31m[Error] AES decrypt creation cipher:", err.Error(), "\033[0m")
 		return nil, err
 	}
 	
@@ -69,7 +77,7 @@ func AESDecrypt(key []byte, ciphertext []byte) ([]byte, error) {
 	// Unpad the plaintext
 	plaintext, err := Unpad(ciphertext)
 	if err != nil {
-		fmt.Println("[Error] AES decrypt unpad")
+		fmt.Println("\033[31m[Error] AES decrypt unpad:", err.Error(), "\033[0m")
 		return nil, err
 	}
 
@@ -88,14 +96,14 @@ func LocalAESEncrypt(plaintext []byte) ([]byte, error) {
 
 	block, err := aes.NewCipher(privateAESKey)
 	if err != nil {
-		fmt.Println("[Error] AES encrypt creation cipher")
+		fmt.Println("\033[31m[Error] AES encrypt creation cipher:", err.Error(), "\033[0m")
 		return nil, err
 	}
 
 	ciphertext := make([]byte, len(plaintext))
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(crand.Reader, iv); err != nil {
-		fmt.Println("[Error] AES encrypt generate iv")
+		fmt.Println("\033[31m[Error] AES encrypt generate iv:", err.Error(), "\033[0m")
 		return nil, err
 	}
 
@@ -103,6 +111,8 @@ func LocalAESEncrypt(plaintext []byte) ([]byte, error) {
 	cbc.CryptBlocks(ciphertext, plaintext)
 
 	ciphertext = append(iv, ciphertext...)
+
+	ciphertext = []byte(ByteToBase64(ciphertext))
 
 	return ciphertext, nil
 
@@ -119,14 +129,14 @@ func AESEncrypt(key []byte, plaintext []byte) ([]byte, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		fmt.Println("[Error] AES encrypt creation cipher")
+		fmt.Println("\033[31m[Error] AES encrypt creation cipher:", err.Error(), "\033[0m")
 		return nil, err
 	}
 
 	ciphertext := make([]byte, len(plaintext))
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(crand.Reader, iv); err != nil {
-		fmt.Println("[Error] AES encrypt generate iv")
+		fmt.Println("\033[31m[Error] AES encrypt generate iv:", err.Error(), "\033[0m")
 		return nil, err
 	}
 

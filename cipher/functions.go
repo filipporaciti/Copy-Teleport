@@ -9,6 +9,7 @@ import(
     "fmt"
     "time"
     "strings"
+
 )
 
 const (
@@ -31,7 +32,7 @@ func RequestAESKeyExchange(ip_address string, password string) error {
 
     conn, err := net.DialTimeout(SERVER_TYPE, ip_address+":"+SERVER_PORT, time.Millisecond * 2000)
     if err != nil {
-        fmt.Println("[Error creating connect send] ", err.Error())
+        fmt.Println("\033[31m[Error] creating connect send:", err.Error(), "\033[0m")
         return err
     }
     defer conn.Close() // send data and stop connection
@@ -55,24 +56,21 @@ func RequestAESKeyExchange(ip_address string, password string) error {
     if err != nil {
         return err
     }
-
+    if out.Type_request == "wrong password" {
+        return errors.New("Wrong password")
+    }
     
-    k, err := Base64ToByte(out.Key)
-    if err != nil {
-        return err
-    }
-    b64RemoteKey, err := LocalRSADecrypt(k)
+    cipAESkey, err := Base64ToByte(out.Key)
     if err != nil {
         return err
     }
 
-    remoteKey, err := Base64ToByte(string(b64RemoteKey))
+    AESRemoteKey, err := LocalRSADecrypt(cipAESkey)
     if err != nil {
         return err
     }
 
-    SaveAESKey(remoteKey)
-
+    SaveAESKey(AESRemoteKey)
 
 
     return err
@@ -86,13 +84,19 @@ func ResponseAESKeyExchange(conn net.Conn, cp CheckPassword) (error) {
         return err
     }
 
+    ris, err := DecodeRSAPublicKeyPEM(out.Key)
+    if err != nil {
+        return err
+    }
+    RemotePublicRSAKey = ris
+
     password, err := Base64ToByte(out.Data)
     if err != nil {
         return err
     }
-    ris, _ := LocalRSADecrypt(password)
-    SendAESKey(conn, string(ris), cp)
+    plainPassword, _ := LocalRSADecrypt(password)
 
+    SendAESKey(conn, string(plainPassword), cp)
 
     return err
 }
@@ -106,14 +110,12 @@ func SendAESKey(conn net.Conn, password string, cp CheckPassword) error {
     var x = RequestResponse{}
 
 
-
     if cp(conn, password) {
         x.Type_request = "aes key"
 
-        ris, _ := LocalRSAEncrypt([]byte(ByteToBase64(privateAESKey)))
-        x.Key = ByteToBase64(ris)
+        ris, _ := RSAEncrypt(RemotePublicRSAKey, privateAESKey)
 
-        
+        x.Key = ByteToBase64(ris)
     } else {
         x.Type_request = "wrong password"
     }
@@ -121,14 +123,14 @@ func SendAESKey(conn net.Conn, password string, cp CheckPassword) error {
 
     data, err := json.Marshal(&x)
     if err != nil{
-            fmt.Println("[Errore] json decoder: " + err.Error())
+            fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
             return err
     }
 
     fmt.Println("\nSend: " + string(data))
     _, err = conn.Write([]byte(data)) 
     if err != nil {
-        fmt.Println("[Error send data]" + err.Error())
+        fmt.Println("\033[31m[Error] send data:", err.Error(), "\033[0m")
         return err
     }
 
@@ -139,6 +141,7 @@ func SendAESKey(conn net.Conn, password string, cp CheckPassword) error {
 func SendPasswordPublicKey(conn net.Conn, password string) error {
     var x = RequestResponse{}
     x.Type_request = "password public key"
+    x.Key = EncodeRSAPublicKeyPEM(&privateRSAKey.PublicKey)
 
     res, err := RSAEncrypt(RemotePublicRSAKey, []byte(password))
     if err != nil {
@@ -148,7 +151,7 @@ func SendPasswordPublicKey(conn net.Conn, password string) error {
 
     data, err := json.Marshal(&x)
     if err != nil{
-            fmt.Println("[Errore] json decoder: " + err.Error())
+            fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
             return err
     }
 
@@ -156,7 +159,7 @@ func SendPasswordPublicKey(conn net.Conn, password string) error {
     fmt.Println("\nSend: " + string(data))
     _, err = conn.Write(data)
     if err != nil {
-        fmt.Println("[Error send data]" + err.Error())
+        fmt.Println("\033[31m[Error] send data:", err.Error(), "\033[0m")
         return err
     }
 
@@ -170,7 +173,7 @@ func SendPublicKey(conn net.Conn) error {
 
     data, err := json.Marshal(&x)
     if err != nil{
-            fmt.Println("[Errore] json decoder: " + err.Error())
+            fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
             return err
     }
 
@@ -178,7 +181,7 @@ func SendPublicKey(conn net.Conn) error {
     fmt.Println("\nSend: " + string(data))
     _, err = conn.Write([]byte(data)) 
     if err != nil {
-        fmt.Println("[Error send data]" + err.Error())
+        fmt.Println("\033[31m[Error] send data:", err.Error(), "\033[0m")
         return err
     }
 
@@ -192,7 +195,7 @@ func SendGetPublicKey(conn net.Conn) error {
 
     data, err := json.Marshal(&x)
     if err != nil{
-            fmt.Println("[Errore] json decoder: " + err.Error())
+            fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
             return err
     }
 
@@ -200,7 +203,7 @@ func SendGetPublicKey(conn net.Conn) error {
     fmt.Println("\nSend: " + string(data))
     _, err = conn.Write([]byte(data)) 
     if err != nil {
-        fmt.Println("[Error send data]" + err.Error())
+        fmt.Println("\033[31m[Error] send data:" + err.Error(), "\033[0m")
         return err
     }
 
@@ -212,7 +215,7 @@ func ReciveData(conn net.Conn) (RequestResponse, error) {
     buffer := make([]byte, 4096)
     mLen, err := conn.Read(buffer)
     if err != nil {
-            fmt.Println("[Error reading after send] ", err.Error())
+            fmt.Println("\033[31m[Error] reading after send:", err.Error(), "\033[0m")
             return RequestResponse{}, err
     }
     out := strings.Trim(string(buffer[:mLen]), "\n")
@@ -261,5 +264,8 @@ func ByteToBase64(data []byte) string {
 
 func Base64ToByte(data string) ([]byte, error) {
     ris, err := base64.StdEncoding.DecodeString(data)
+    if err != nil {
+        fmt.Println("\033[31m[Error] base64 decode:", err.Error(), "\033[0m")
+    }
     return ris, err
 }
