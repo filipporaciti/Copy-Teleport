@@ -9,7 +9,6 @@ import (
 
         "Copy-Teleport/devices"
         "Copy-Teleport/cipher"
-
 )
 
 var server, err = net.Listen(SERVER_TYPE, SERVER_HOST+":"+SERVER_PORT)
@@ -98,20 +97,30 @@ func SendUpdateDevices() error {
                         return err
                 }
 
-                data := new(ResponseClient)
-                data.Type_request = "update devices"
+                out := ResponseClient{}
+                out.Type_request = "update devices"
 
+                data := DataResponse{}
                 data.Username = Username
+                data.Token = token
+                data.Data = cipher.ByteToBase64(dev)
 
-                cipToken, err := cipher.LocalAESEncrypt([]byte(token))
-                b64CipToken := cipher.ByteToBase64(cipToken)
-                data.Token = b64CipToken
+                stringData, err := json.Marshal(&data)
+                if err != nil{
+                        fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
+                        return err
+                }
+                    
+                cipData, err := cipher.LocalAESEncrypt([]byte(stringData))
+                if err != nil{
+                        return err
+                }
+                b64CipData := cipher.ByteToBase64(cipData)
 
-                cipDev, err := cipher.LocalAESEncrypt(dev)
-                b64CipDev := cipher.ByteToBase64(cipDev)
-                data.Data = b64CipDev
+                out.B64EncData = b64CipData
 
-                ris, err := json.Marshal(&data)
+
+                ris, err := json.Marshal(&out)
 
                 if err != nil {
                         fmt.Println("\033[31m[Errore] codifica json on SendUpdateDevices (output): " + err.Error(), "\033[0m")

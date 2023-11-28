@@ -1,7 +1,10 @@
 # Copy-Teleport
 
 
+
 ### requirements
+
+Linux of MacOS operative system. NO WINDOWS
 
 ping
 `sudo apt install iputils-ping`

@@ -64,19 +64,6 @@ func GetDevices(targetIP string) {
     return 
 }
 
-// func scanPort(ip string, port int) {
-//     // defer wg.Done()
-
-//     target := fmt.Sprintf("%s:%d", ip, port)
-//     conn, err := net.DialTimeout("tcp", target, 1*time.Second)
-//     if err != nil {
-//         return // Port is closed
-//     }
-//     conn.Close()
-//     // fmt.Printf("Port %d is open on %s\n", port, ip)
-// }
-
-
 // Make ping request from terminal
 func pingIP(ip string) error {
 	var cmd *exec.Cmd

@@ -13,24 +13,34 @@ import (
 
 func SendConnectionRequest(ip_address string, password string) error {
 
-    // cipPassword, err := cipher.LocalAESEncrypt([]byte(password))
-    // data.Password = string(cipPassword)
-
     err := cipher.RequestAESKeyExchange(ip_address, password)
     return err
 }
 
 func SendAddCopyRequest(text string) error {
-    data := new(ResponseClient)
-    data.Type_request = "add copy"
-    cipUsername, err := cipher.LocalAESEncrypt([]byte(Username))
-    data.Username = string(cipUsername)
-    cipToken, err := cipher.LocalAESEncrypt([]byte(token))
-    data.Token = string(cipToken)
-    cipText, err := cipher.LocalAESEncrypt([]byte(text))
-    data.Data = string(cipText)
+    out := ResponseClient{}
+    out.Type_request = "add copy"
 
-    ris, err := json.Marshal(&data)
+    data := DataResponse{}
+    data.Username = Username
+    data.Token = token
+    data.Data = text
+
+    stringData, err := json.Marshal(&data)
+    if err != nil{
+            fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
+            return err
+    }
+    
+    cipData, err := cipher.LocalAESEncrypt([]byte(stringData))
+    if err != nil{
+            return err
+    }
+    b64CipData := cipher.ByteToBase64(cipData)
+
+    out.B64EncData = b64CipData
+
+    ris, err := json.Marshal(&out)
 
     if err != nil {
         fmt.Println("\033[31m[Errore] codifica json on SendAddCopyRequest: " + err.Error(), "\033[0m")
@@ -46,11 +56,11 @@ func SendAddCopyRequest(text string) error {
 }
 
 func SendOneBeaconRequest(ip_address string) error {
-	data := new(ResponseClient)
-	data.Type_request = "beacon request"
-	data.Username = Username
+	out := ResponseClient{}
+	out.Type_request = "beacon request"
+	out.B64EncData = Username
 
-	ris, err := json.Marshal(&data)
+	ris, err := json.Marshal(&out)
 
 	if err != nil {
 		fmt.Println("\033[31m[Errore] codifica json on SendOneBeaconRequest: " + err.Error(), "\033[0m")
@@ -60,40 +70,78 @@ func SendOneBeaconRequest(ip_address string) error {
 	return err
 }
 
-func SendTokenUpdate(ip_address string, user string, pass string) error {
+func SendTokenUpdate(ip_address string) error {
 
 
-    data := new(ResponseClient)
-    data.Type_request = "token update"
+    out := ResponseClient{}
+    out.Type_request = "token update request"
+
+
+    data := DataResponse{}
     data.Username = Username
- 
-    cipToken, err := cipher.LocalAESEncrypt([]byte(token))
-    if err != nil {
+    data.Token = token
+    data.Data = "speriamo che serva a qualcosa questa stringa"
+
+    stringData, err := json.Marshal(&data)
+    if err != nil{
+        fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
         return err
     }
-    b64CipToken := cipher.ByteToBase64(cipToken)
     
-    data.Token = b64CipToken
+    cipData, err := cipher.LocalAESEncrypt([]byte(stringData))
+    if err != nil{
+        return err
+    }
+    b64CipData := cipher.ByteToBase64(cipData)
 
-    ris, err := json.Marshal(&data)
+    out.B64EncData = b64CipData
+
+
+
+    ris, err := json.Marshal(&out)
 
     if err != nil {
         fmt.Println("\033[31m[Errore] codifica json on SendTokenUpdate: " + err.Error(), "\033[0m")
         return err
     }
-    err = SendData(ip_address, ris, false)
-
-                
-    // plainPassword, err := cipher.LocalAESEncrypt([]byte(res.Password))
-    // if err != nil{
-        //         fmt.Println("[Errore] local AES encrypt: " + err.Error())
-        //         return false
-        // }
-
-    devices.Add(user, pass, ip_address)
-    SendUpdateDevices()
+    err = SendData(ip_address, ris, true)
 
     return err
+    
+}
+
+func SendTokenUpdateResponse(ip_address string) error {
+    out := ResponseClient{}
+    out.Type_request = "token update response"
+
+    data := DataResponse{}
+    data.Username = Username
+    data.Token = token
+
+    stringData, err := json.Marshal(&data)
+    if err != nil{
+        fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
+        return err
+    }
+
+    cipData, err := cipher.LocalAESEncrypt([]byte(stringData))
+    if err != nil{
+        return err
+    }
+    b64CipData := cipher.ByteToBase64(cipData)
+
+    out.B64EncData = b64CipData
+
+    ris, err := json.Marshal(&out)
+
+    if err != nil {
+        fmt.Println("\033[31m[Errore] json encoding: " + err.Error(), "\033[0m")
+        return err
+    }
+
+    err = SendData(ip_address, ris, false)
+    return err
+
 }
 
 func SendData(ip_address string, data []byte, response bool) error {

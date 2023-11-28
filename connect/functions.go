@@ -10,7 +10,6 @@ import (
 	"strings"
 	"errors"
 
-
 	"github.com/atotto/clipboard"
 
 	"Copy-Teleport/devices"
@@ -160,12 +159,28 @@ func checkToken(connection net.Conn, tryToken string) bool {
                 out := ResponseClient{}
 
                 out.Type_request = "invalid token"
-                out.Username = Username
+
+                data := DataResponse{}
+                data.Username = Username
+
+                stringData, err := json.Marshal(&data)
+                if err != nil{
+                        fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
+                        return false
+                }
                 
+                cipData, err := cipher.LocalAESEncrypt([]byte(stringData))
+                if err != nil{
+                        return false
+                }
+                b64CipData := cipher.ByteToBase64(cipData)
+
+                out.B64EncData = b64CipData
 
                 ris, err := json.Marshal(&out)
                 if err != nil{
                         fmt.Println("\033[31m[Error] json decoder:", err.Error(), "\033[0m")
+                        return false
                 }
                 connection.Write([]byte(ris))
         }
@@ -173,35 +188,26 @@ func checkToken(connection net.Conn, tryToken string) bool {
         return tryToken == token
 }
 
-func checkPassword(connection net.Conn, tryPassword string) bool {
-        //return true // da togliere
-        // if tryPassword != Password {
-
-        //         fmt.Println("[Error] invalid password")
-        //         out := ResponseClient{}
-
-        //         out.Type_request = "invalid password"
-        //         out.Username = Username
-                
-
-        //         ris, err := json.Marshal(&out)
-        //         if err != nil{
-        //                 fmt.Println("[Error] json decoder: " + err.Error())
-        //         }
-        //         connection.Write([]byte(ris))
-        // }
-
-        return tryPassword == Password
-}
-
-
 func processResponse(connection net.Conn, res ResponseClient) error {
+	resData := DataResponse{}
+	remote_addr := strings.Split(connection.RemoteAddr().String(), ":")[0]
+
+	if res.Type_request != "beacon response" && res.Type_request != "beacon request" && res.Type_request != "get public key" {
+
+		encResData, _ := cipher.Base64ToByte(res.B64EncData)
+		stringResData, err := cipher.LocalAESDecrypt(encResData)
+		if err != nil {
+			return err
+		}
+
+	        json.Unmarshal([]byte(stringResData), &resData)
+	}
 
         switch res.Type_request {
         case "beacon request":
                 out := ResponseClient{}
                 out.Type_request = "beacon response"
-                out.Username = Username
+                out.B64EncData = Username
 
                 ris, err := json.Marshal(&out)
                 if err != nil{
@@ -211,77 +217,51 @@ func processResponse(connection net.Conn, res ResponseClient) error {
                 connection.Write([]byte(ris))
                 return nil
         case "beacon response":
-
-        	// plainUsername, err := cipher.LocalAESDecrypt([]byte(res.Username))
-        	// if err != nil{
-                //         fmt.Println("[Errore] local AES decrypt: " + err.Error())
-                //         return err
-                // }
-
         	// split to remove "port" part in ip address
-                Add(res.Username, strings.Split(connection.RemoteAddr().String(), ":")[0])
+                Add(res.B64EncData, strings.Split(connection.RemoteAddr().String(), ":")[0])
                 return nil
-        case "token update":
-                
+        case "token update request":
 
-                b64CipToken, err := cipher.Base64ToByte(res.Token)
-                if err != nil {
-                	return err
-                }
-                
-                plainToken, err := cipher.LocalAESDecrypt(b64CipToken)
-                if err != nil {
-                	return err
-                }
+        	if resData.Data == "speriamo che serva a qualcosa questa stringa"{
 
-                token = string(plainToken)
+	                token = resData.Token
+
+	                err := SendTokenUpdateResponse(remote_addr)
+
+			return err
+		}
+		return errors.New("Invalid token")
+        case "token update response":
+
+                if checkToken(connection, resData.Token) {
+        		devices.Add(resData.Username, "resData.Password", remote_addr)
+    			SendUpdateDevices()
+    		}
+
 
                 return err
-
         case "add copy":
 
-        	plainToken, err := cipher.LocalAESDecrypt([]byte(res.Token))
-        	if err != nil{
-                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
-                        return err
-                }
-
-        	plainData, err := cipher.LocalAESDecrypt([]byte(res.Data))
-        	if err != nil{
-                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
-                        return err
-                }
-
-                if checkToken(connection, string(plainToken)) {
-                        history.Add(res.Username, string(plainData))
-                        PasteClipboard(string(plainData))
+                if checkToken(connection, resData.Token) {
+                        history.Add(resData.Username, resData.Data)
+                        PasteClipboard(resData.Data)
                 }
                 return nil
 
         case "update devices":
 
-        	byteEncToken, _ := cipher.Base64ToByte(res.Token)
-        	plainToken, err := cipher.LocalAESDecrypt(byteEncToken)
-        	if err != nil{
-                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
-                        return err
-                }
-
-                byteEncData, _ := cipher.Base64ToByte(res.Data)
-        	plainData, err := cipher.LocalAESDecrypt(byteEncData)
-        	if err != nil{
-                        fmt.Println("\033[31m[Error] local AES decrypt:", err.Error(), "\033[0m")
-                        return err
-                }
-                
-
-                if checkToken(connection, string(plainToken)) {
+                if checkToken(connection, resData.Token) {
                         jsonOut := make([]devices.DevicesElement, 0)
-                        json.Unmarshal(plainData, &jsonOut)
+
+                        byteDev, err := cipher.Base64ToByte(resData.Data)
+                        if err != nil {
+                        	return err
+                        }
+                        json.Unmarshal([]byte(byteDev), &jsonOut)
                         devices.Values = jsonOut
                 }
                 return nil
-        case "get public key":
+        case "get public key": // to server
 
         	passFunc := func(conn net.Conn, pass string) bool {
 	        	return pass == Password
@@ -293,7 +273,8 @@ func processResponse(connection net.Conn, res ResponseClient) error {
         		return err
         	}
 
-        	SendTokenUpdate(strings.Split(connection.RemoteAddr().String(), ":")[0], "Pippo", "plainPassword")
+
+        	SendTokenUpdate(remote_addr)
 
         	return err
         default:

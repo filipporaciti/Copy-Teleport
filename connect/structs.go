@@ -22,9 +22,14 @@ func (d *AvailableDevice) Connect() {
 }
 
 
-type ResponseClient struct{
+type ResponseClient struct {
 
         Type_request string     `json:"type_request"`
+        B64EncData string          `json:"b64encdata"`
+        
+}
+
+type DataResponse struct {
         Username string         `json:"username"`
         Password string         `json:"password"`
         Token string            `json:"token"`
@@ -32,4 +37,5 @@ type ResponseClient struct{
 
         Data string             `json:"data"`
         Key string              `json:"key"`
+
 }
